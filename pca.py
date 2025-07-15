@@ -2,22 +2,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.datasets import load_digits
 
+import numpy as np
+
 class FullScratchPCA:
     def __init__(self, n_components, max_iter=1000, tol=1e-6):
         self.n_components = n_components
-        self.mean = None
-        self.components = None
         self.max_iter = max_iter
         self.tol = tol
+        self.mean = None
+        self.components = None
+        self.eigenvalues = None
 
-    @staticmethod
-    def center_data(X):
-        mean = np.mean(X, axis=0)
-        X_centered = X - mean
-        return X_centered, mean
+    def center_data(self, X):
+        self.mean = np.mean(X, axis=0)
+        return X - self.mean
 
-    @staticmethod
-    def compute_covariance_matrix(X_centered):
+    def compute_covariance_matrix(self, X_centered):
         n_samples = X_centered.shape[0]
         return (1 / (n_samples - 1)) * (X_centered.T @ X_centered)
 
@@ -33,28 +33,48 @@ class FullScratchPCA:
             v = v_new
         return v
 
-    @staticmethod
-    def deflate_matrix(A, v):
-        return A - (A @ v).reshape(-1, 1) @ v.reshape(1, -1)
+    def deflate_matrix(self, A, v, eigenvalue):
+        return A - eigenvalue * np.outer(v, v)
 
     def fit(self, X):
-        # Centrage
-        X_centered, self.mean = self.center_data(X)
-        # Matrice de covariance
+        X_centered = self.center_data(X)
         cov_matrix = self.compute_covariance_matrix(X_centered)
 
         A = cov_matrix.copy()
         components = []
+        eigenvalues = []
+
         for _ in range(self.n_components):
             v = self.power_iteration(A)
+            eigenvalue = v.T @ A @ v
             components.append(v)
-            A = self.deflate_matrix(A, v)
+            eigenvalues.append(eigenvalue)
+            A = self.deflate_matrix(A, v, eigenvalue)
 
         self.components = np.array(components).T  # shape (features, n_components)
+        self.eigenvalues = np.array(eigenvalues)
 
-    def transform(self, X):
+        # Affichage des valeurs propres
+        print("Valeurs propres (approx. via power iteration) :")
+        for i, val in enumerate(self.eigenvalues):
+            print(f"λ{i+1} = {val:.4f}")
+
+    def compress(self, X):
+        """Compression : projection dans l’espace réduit"""
         X_centered = X - self.mean
         return X_centered @ self.components
+
+    def decompress(self, X_compressed):
+        """Décompression : retour dans l’espace original"""
+        return X_compressed @ self.components.T + self.mean
+
+    def transform(self, X):
+        """Alias de compress"""
+        return self.compress(X)
+
+    def inverse_transform(self, X_compressed):
+        """Alias de decompress"""
+        return self.decompress(X_compressed)
 
 # ======== Utilisation ========
 digits = load_digits()
