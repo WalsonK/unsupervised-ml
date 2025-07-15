@@ -19,9 +19,28 @@ if __name__ == '__main__':
         if algo == 'kmeans':
             # traitement des données
             X = X.to_numpy()
+
             # algorithm 
             model = Kmeans()
-            cluster_center, labels = model.train(X, n_clusters=10, max_iter=100)
+            print("What do you want to do with Kmeans? \n1.train\n2.load: ")
+            choice = int(input("> ").strip())
+            
+            if choice == 1:
+                cluster_center, labels = model.train(X, n_clusters=10, max_iter=100)
+                print("Training completed.")
+                is_saving = input("Do you want to save the model info? (y/n): ").strip().lower()
+                if is_saving == 'y':
+                    model.save_info("kmeans_info.json")
+
+            elif choice == 2:
+                model.load_info("kmeans_info.json")
+                mode = input("Do you want to use the model for inference or compression? ([I]nference/[C]ompression): ").strip().lower()
+                if mode == 'c':
+                    index, distance = model.kmeans_compression(X[0])
+                    print((index, distance))
+                    new_point = model.kmeans_decompression(index, distance)
+                    model.display(np.array([X[0], new_point]), titre="Decompressed Image")
+
         elif algo == 'pca':
             print("You chose PCA for dimensionality reduction.")
         elif algo == 'autoencoder':
