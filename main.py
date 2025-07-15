@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.datasets import fetch_openml
+from kmeans import kmeans
+import matplotlib.pyplot as plt
 
 
 # Charger et préparer les données
@@ -9,11 +11,16 @@ X, y = mnist.data, mnist.target
 if __name__ == '__main__':
     print("MNIST dataset loaded successfully.")
     algo = input("Which algorithm would you like to use? (kmeans/pca/autoencoder): ").strip().lower()
+
     if algo not in ['kmeans', 'pca', 'autoencoder']:
         print("Invalid algorithm choice. Please choose from kmeans, pca, or autoencoder.")
+
     else:
         if algo == 'kmeans':
-            print("You chose KMeans clustering.")
+            # traitement des données
+            X = X.to_numpy()
+            # algorithm 
+            cluster_center, labels = kmeans(X, 10, 100)
         elif algo == 'pca':
             print("You chose PCA for dimensionality reduction.")
         elif algo == 'autoencoder':
