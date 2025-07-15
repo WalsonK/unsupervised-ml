@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.datasets import fetch_openml
-from kmeans import kmeans
+from kmeans import Kmeans
 import matplotlib.pyplot as plt
 
 
@@ -20,7 +20,8 @@ if __name__ == '__main__':
             # traitement des données
             X = X.to_numpy()
             # algorithm 
-            cluster_center, labels = kmeans(X, 10, 100)
+            model = Kmeans()
+            cluster_center, labels = model.train(X, n_clusters=10, max_iter=100)
         elif algo == 'pca':
             print("You chose PCA for dimensionality reduction.")
         elif algo == 'autoencoder':
