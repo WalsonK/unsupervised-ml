@@ -7,10 +7,12 @@ class Kmeans:
     def __init__(self):
         cluster_centers = np.ndarray([])
         labels = np.ndarray([])
+        self.cluster_std = None
 
     def train(self, X, n_clusters=10, max_iter=300):
         self.cluster_centers = np.random.rand(n_clusters, X.shape[1])
         self.labels = np.zeros(X.shape[0], dtype=int)
+        self.cluster_std = np.zeros((n_clusters, X.shape[1]))
 
         # Loop until convergence
         for _ in tqdm(range(max_iter), desc="K-Means Iterations"):
@@ -24,6 +26,11 @@ class Kmeans:
 
             # If the cluster centers do not change, break the loop
             if np.allclose(self.cluster_centers, new_cluster_centers):
+                # Calculate standard deviation for each cluster
+                for k in range(n_clusters):
+                    points_in_cluster = X[self.labels == k]
+                    if len(points_in_cluster) > 0:
+                        self.cluster_std[k] = np.std(points_in_cluster, axis=0)
                 break
 
             self.cluster_centers = new_cluster_centers
@@ -34,7 +41,8 @@ class Kmeans:
     def save_info(self, path="kmeans_info.json"):
         res = {
             "cluster_centers": self.cluster_centers.tolist(),
-            "labels": self.labels.tolist()  
+            "labels": self.labels.tolist(),
+            "cluster_std": self.cluster_std.tolist()  
         }
         with open(path, 'w') as file:
             json.dump(res, file)
@@ -44,6 +52,7 @@ class Kmeans:
             res = json.load(file)
         self.cluster_centers = np.array(res["cluster_centers"])
         self.labels = np.array(res["labels"])
+        self.cluster_std = np.array(res["cluster_std"])
 
     def inference(self, point):
         distances = np.linalg.norm(self.cluster_centers - point, axis=1)
@@ -70,26 +79,33 @@ class Kmeans:
 
     def kmeans_generation(self, index):
         cluster = self.cluster_centers[index]
-        # Calc zone of influence of each cluster center (echantillon de l'espace latent)
-        # randomly generate points within the zone of influence
-        ...
+        std = self.cluster_std[index]
 
-    def kmeans_compression(self, point):
-        index = self.inference(point)
-        cluster = self.cluster_centers[index]
-
-        # Calculer la distance euclidienne
-        distance = np.linalg.norm(point - cluster)
-
-        return index, distance
-
-    def kmeans_decompression(self, index, distance):
-        cluster = self.cluster_centers[index]
-        
-        # Générer une direction aléatoire
+         # Générer une direction aléatoire fixe
         random_direction = np.random.randn(*cluster.shape)
         normalized_random_direction = random_direction / np.linalg.norm(random_direction)
 
-        # Reconstituer le point à partir du centre du cluster et de la direction aléatoire
-        reconstructed_point = cluster + normalized_random_direction * distance
+        reconstructed_point = np.where(std == 0, cluster, cluster + (normalized_random_direction  * std))
+        return reconstructed_point
+    
+    def kmeans_compression(self, point):
+        index = self.inference(point)
+        cluster = self.cluster_centers[index]
+        std = self.cluster_std[index]
+
+        # Calculer la distance pondérée par l'écart type
+        weighted_distance = np.linalg.norm((point - cluster) / (std + 1e-8))  # Éviter la division par zéro
+
+        return index, weighted_distance
+
+    def kmeans_decompression(self, index, distance):
+        cluster = self.cluster_centers[index]
+        std = self.cluster_std[index]
+
+        # Générer une direction aléatoire fixe
+        random_direction = np.random.randn(*cluster.shape)
+        normalized_random_direction = random_direction / np.linalg.norm(random_direction)
+
+        # Reconstituer le point en tenant compte de l'écart type
+        reconstructed_point = np.where(std == 0, cluster, cluster + (normalized_random_direction * distance * std))
         return reconstructed_point
