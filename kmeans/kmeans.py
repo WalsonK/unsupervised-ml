@@ -120,7 +120,7 @@ class Kmeans:
         # Return the cluster centers and labels
         return self.cluster_centers, self.labels
     
-    def save_info(self, path="kmeans_info.json"):
+    def save_info(self, path="kmeans/kmeans_info.json"):
         res = {
             "cluster_centers": self.cluster_centers.tolist(),
             "labels": self.labels.tolist(),
@@ -129,7 +129,7 @@ class Kmeans:
         with open(path, 'w') as file:
             json.dump(res, file)
     
-    def load_info(self, path="kmeans_info.json"):
+    def load_info(self, path="kmeans/kmeans_info.json"):
         with open(path, 'r') as file:
             res = json.load(file)
         self.cluster_centers = np.array(res["cluster_centers"])

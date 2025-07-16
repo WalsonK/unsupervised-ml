@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.datasets import fetch_openml
-from kmeans import Kmeans
+from kmeans.kmeans import Kmeans
 import matplotlib.pyplot as plt
 
 
@@ -33,7 +33,7 @@ if __name__ == '__main__':
                     model.save_info("kmeans_info.json")
 
             elif choice == 2:
-                model.load_info("kmeans_info.json")
+                model.load_info("kmeans/kmeans_info.json")
                 mode = input("Do you want to use the model for inference or compression? ([I]nference/[C]ompression/[G]eneration): ").strip().lower()
                 if mode == 'i':
                     point_index = int(input("Enter the index of the point to infer: "))
