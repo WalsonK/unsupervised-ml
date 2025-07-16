@@ -134,14 +134,11 @@ def plot_weight_grid(som, ax, iteration_count):
     weights = som.get_weights()
     grid_h, grid_w, _ = weights.shape
     
-    # Create a large canvas to tile the weight images
     canvas = np.ones((grid_h * 28, grid_w * 28))
     
     for i in range(grid_h):
         for j in range(grid_w):
-            # Get the weight vector for the neuron and reshape it to a 28x28 image
             neuron_image = weights[i, j].reshape(28, 28)
-            # Place it on the canvas
             canvas[i*28:(i+1)*28, j*28:(j+1)*28] = neuron_image
             
     ax.imshow(canvas, cmap='gray')
@@ -152,11 +149,18 @@ def plot_weight_grid(som, ax, iteration_count):
 # 3. Main Analysis Driver
 # ==============================================================================
 
-def run_evolution_analysis(save_dir="som_evolution_combined"):
+def run_evolution_analysis(output_folder_name="som_evolution_combined"):
     """
     Trains a SOM in stages and, for each stage, plots both the data projection
     and the grid of learned neuron weights.
     """
+    # Get the directory where the script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Create the full path for the output directory inside the script's directory
+    save_dir = os.path.join(script_dir, output_folder_name)
+    
+    # Now, create this directory
     os.makedirs(save_dir, exist_ok=True)
 
     print("Loading MNIST dataset...")
@@ -172,7 +176,6 @@ def run_evolution_analysis(save_dir="som_evolution_combined"):
     grid_size = (20, 20)
     checkpoints = [100, 500, 1000, 5000, 10000, 25000, 50000, 100000]
     
-    # --- Set up two figures: one for projections, one for weight grids ---
     fig_proj, axes_proj = plt.subplots(2, 4, figsize=(20, 10), constrained_layout=True)
     axes_proj = axes_proj.flatten()
 
@@ -192,11 +195,9 @@ def run_evolution_analysis(save_dir="som_evolution_combined"):
         
         som.train(X_subset, num_iterations=n_iter)
         
-        # Generate both plots for the current stage
         plot_projection(som, X_subset, y_subset, axes_proj[i], n_iter)
         plot_weight_grid(som, axes_weights[i], n_iter)
 
-    # --- Finalize and save the PROJECTION plot ---
     handles, labels = axes_proj[0].get_legend_handles_labels()
     fig_proj.legend(handles, labels, loc='center right', title="Digits")
     fig_proj.suptitle('Evolution of MNIST Data Projection on a Self-Organizing Map', fontsize=24)
@@ -205,13 +206,12 @@ def run_evolution_analysis(save_dir="som_evolution_combined"):
     fig_proj.savefig(proj_save_path, dpi=150)
     print(f"\nProjection evolution plot saved to: {proj_save_path}")
 
-    # --- Finalize and save the WEIGHTS plot ---
     fig_weights.suptitle("Evolution of SOM's Learned Weight Prototypes", fontsize=24)
     weights_save_path = os.path.join(save_dir, "som_weights_evolution.png")
     fig_weights.savefig(weights_save_path, dpi=150)
     print(f"Weights evolution plot saved to: {weights_save_path}")
 
-    plt.show() # Show both figures
+    plt.show()
 
 # ==============================================================================
 # 4. Script Execution
