@@ -36,7 +36,7 @@ def _update_centroids(X, labels, new_centroids, n_clusters):
 
     if idx < n_clusters:
         count = 0
-        centroid_sum = cuda.local.array(256, dtype=cuda.float32)
+        centroid_sum = cuda.local.array(256, dtype=np.float32)
 
         for d in range(X.shape[1]):
             centroid_sum[d] = 0.0
