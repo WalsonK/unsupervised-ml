@@ -6,8 +6,8 @@ from sklearn.datasets import fetch_openml
 from sklearn.preprocessing import StandardScaler
 import torch
 
-from kmeans.kmeans_and_pca_visu.kmeans_cuda import KMeansCUDA
-from kmeans.kmeans_and_pca_visu.full_scratch_pca import FullScratchPCA
+from kmeans.kmeans_visu.kmeans_cuda import KMeansCUDA
+from kmeans.kmeans_visu.plot_kmeans import FullScratchPCA
 
 
 def kmeans_pipeline(X, use_cuda=True):
