@@ -59,3 +59,5 @@ class KMeansCUDA:
     def predict(self, X: np.ndarray) -> np.ndarray:
         X = torch.as_tensor(X, dtype=torch.float32, device=self.device)
         return self._assign_clusters(X).cpu().numpy()
+    
+    
