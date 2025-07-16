@@ -113,7 +113,7 @@ class SOMCuda:
 def run_compression_pipeline():
     # --- Parameters ---
     grid_size = (20, 20)
-    num_training_iterations = 50000
+    num_training_iterations = 100000
     model_filename = "som_codebook.pt"
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
