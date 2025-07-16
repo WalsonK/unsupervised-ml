@@ -6,3 +6,5 @@ seaborn>=0.11.0
 tensorflow>=2.8.0
 keras>=2.8.0
 jupyter>=1.0.0
+numba
+tqdm
