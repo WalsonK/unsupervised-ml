@@ -5,86 +5,54 @@ import json
 import matplotlib.pyplot as plt
 
 @cuda.jit
-def assign_clusters_gpu_optimized(X, cluster_centers, labels):
+def _assign_clusters(X, cluster_centers, labels):
     """
-    Kernel CUDA optimisé pour assigner chaque point au cluster le plus proche.
-    Chaque thread traite une partie des dimensions pour un point donné.
+    Kernel CUDA pour assigner chaque point au cluster le plus proche.
     """
     idx = cuda.grid(1)  # Identifiant global du thread
-    tid = cuda.threadIdx.x  # Identifiant du thread dans le bloc
-    block_dim = cuda.blockDim.x  # Nombre de threads par bloc
 
-    # Vérifie que l'index est dans les limites
     if idx < X.shape[0]:
-        # Mémoire partagée pour stocker les distances partielles
-        shared_distances = cuda.shared.array(shape=(256,), dtype=cuda.float32)
-
         min_dist = float('inf')
         min_cluster = -1
 
         for k in range(cluster_centers.shape[0]):
-            # Calcul de la distance partielle pour ce thread
             dist = 0.0
-            for d in range(tid, X.shape[1], block_dim):
+            for d in range(X.shape[1]):
                 diff = X[idx, d] - cluster_centers[k, d]
                 dist += diff * diff
 
-            # Réduction dans la mémoire partagée
-            shared_distances[tid] = dist
-            cuda.syncthreads()
+            if dist < min_dist:
+                min_dist = dist
+                min_cluster = k
 
-            # Réduction finale pour obtenir la distance totale
-            if tid == 0:
-                total_dist = 0.0
-                for i in range(block_dim):
-                    total_dist += shared_distances[i]
-                shared_distances[0] = total_dist
-            cuda.syncthreads()
-
-            # Le thread 0 met à jour le cluster le plus proche
-            if tid == 0:
-                if shared_distances[0] < min_dist:
-                    min_dist = shared_distances[0]
-                    min_cluster = k
-
-        # Le thread 0 met à jour le label pour ce point
-        if tid == 0:
-            labels[idx] = min_cluster
+        labels[idx] = min_cluster
 
 @cuda.jit
-def calculate_new_centroids(X, labels, new_centroids, n_clusters):
+def _update_centroids(X, labels, new_centroids, n_clusters):
     """
     Kernel CUDA pour calculer les nouveaux centroïdes.
-    Chaque thread traite une partie des données pour un centroïde donné.
     """
     idx = cuda.grid(1)  # Identifiant global du thread
-    tid = cuda.threadIdx.x  # Identifiant du thread dans le bloc
-    block_dim = cuda.blockDim.x  # Nombre de threads par bloc
 
-    # Vérifie que l'index est dans les limites
     if idx < n_clusters:
-        cluster_points = cuda.local.array(256, dtype=cuda.float32)
         count = 0
+        centroid_sum = cuda.local.array(256, dtype=cuda.float32)
 
-        for i in range(tid, X.shape[0], block_dim):
+        for d in range(X.shape[1]):
+            centroid_sum[d] = 0.0
+
+        for i in range(X.shape[0]):
             if labels[i] == idx:
                 for d in range(X.shape[1]):
-                    cluster_points[d] += X[i, d]
+                    centroid_sum[d] += X[i, d]
                 count += 1
 
-        # Réduction pour obtenir la somme des points du cluster
-        for i in range(block_dim):
-            if i != tid and labels[i] == idx:
-                for d in range(X.shape[1]):
-                    cluster_points[d] += X[i, d]
-                count += 1
-
-        # Calcul du nouveau centroïde
         if count > 0:
             for d in range(X.shape[1]):
-                new_centroids[idx, d] = cluster_points[d] / count
+                new_centroids[idx, d] = centroid_sum[d] / count
         else:
-            new_centroids[idx] = X[idx]
+            for d in range(X.shape[1]):
+                new_centroids[idx, d] = 0.0
 
 class Kmeans:
     def __init__(self):
@@ -114,11 +82,11 @@ class Kmeans:
 
             for _ in range(max_iter):
                 # Appel du kernel optimisé pour assigner les clusters
-                assign_clusters_gpu_optimized[blocks_per_grid, threads_per_block](d_X, d_cluster_centers, d_labels)
+                _assign_clusters[blocks_per_grid, threads_per_block](d_X, d_cluster_centers, d_labels)
 
                 # Calcul des nouveaux centroïdes sur le GPU
                 new_cluster_centers = cuda.device_array_like(d_cluster_centers)
-                calculate_new_centroids[blocks_per_grid, threads_per_block](d_X, d_labels, new_cluster_centers, n_clusters)
+                _update_centroids[blocks_per_grid, threads_per_block](d_X, d_labels, new_cluster_centers, n_clusters)
 
                 # Copier les centroïdes sur le CPU pour vérifier la convergence
                 new_cluster_centers_host = new_cluster_centers.copy_to_host()
