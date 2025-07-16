@@ -1,5 +1,4 @@
 # kmeans_cuda.py
-
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -10,32 +9,42 @@ class KMeansCUDA:
         self.n_clusters = n_clusters
         self.max_iter   = max_iter
         self.tol        = tol
-        self.device     = torch.device(device)
-
+        
+        # Auto-detect device and fallback to CPU if CUDA not available
+        if isinstance(device, str):
+            if device == 'cuda' and not torch.cuda.is_available():
+                print("CUDA not available, falling back to CPU")
+                device = 'cpu'
+            self.device = torch.device(device)
+        else:
+            self.device = device
+            
+        print(f"Using device: {self.device}")
+        
         self.centroids: torch.Tensor | None = None
         self.labels:    torch.Tensor | None = None
-
+    
     def fit(self, X: np.ndarray):
         X = torch.as_tensor(X, dtype=torch.float32, device=self.device)
-
         perm = torch.randperm(X.shape[0], device=self.device)
         self.centroids = X[perm[:self.n_clusters]].clone()
-
+        
         for it in tqdm(range(self.max_iter), desc="Training K-Means"):
             self.labels = self._assign_clusters(X)
             new_centroids = self._update_centroids(X)
-
+            
             if torch.allclose(new_centroids, self.centroids, atol=self.tol):
                 print(f"Converged at iteration {it}")
                 break
+                
             self.centroids = new_centroids
-
+        
         return self
-
+    
     def _assign_clusters(self, X: torch.Tensor) -> torch.Tensor:
         dists = torch.cdist(X, self.centroids)
         return torch.argmin(dists, dim=1)
-
+    
     def _update_centroids(self, X: torch.Tensor) -> torch.Tensor:
         centroids = []
         for k in range(self.n_clusters):
@@ -45,7 +54,7 @@ class KMeansCUDA:
             else:
                 centroids.append(self.centroids[k])
         return torch.stack(centroids)
-
+    
     @torch.inference_mode()
     def predict(self, X: np.ndarray) -> np.ndarray:
         X = torch.as_tensor(X, dtype=torch.float32, device=self.device)
