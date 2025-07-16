@@ -1,13 +1,10 @@
 import numpy as np
-import matplotlib
-
-matplotlib.use('TkAgg')  # Force l'utilisation du backend TkAgg
 from matplotlib import pyplot as plt
 from sklearn.datasets import fetch_openml
 from kmeans.kmeans import Kmeans
 import matplotlib.pyplot as plt
 
-from pca import FullScratchPCA
+from pca.pca import FullScratchPCA
 
 # Charger et préparer les données
 print("Loading MNIST dataset...")
