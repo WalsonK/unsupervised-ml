@@ -5,6 +5,7 @@ from kmeans.kmeans import Kmeans
 import matplotlib.pyplot as plt
 
 from pca.pca import FullScratchPCA
+from gan.gan import Gan
 
 # Charger et préparer les données
 print("Loading MNIST dataset...")
@@ -19,20 +20,32 @@ y = y[indices]
 
 if __name__ == '__main__':
     print("MNIST dataset loaded successfully.")
+    print(X[0].shape)
 
     while True:
         print("\n" + "=" * 50)
         print("🎯 MENU PRINCIPAL")
         print("=" * 50)
-        algo = input("Which algorithm would you like to use? (kmeans/pca/autoencoder/quit): ").strip().lower()
+        algo = input("Which algorithm would you like to use? (kmeans/pca/autoencoder/gan/quit): ").strip().lower()
 
         if algo == 'quit':
             print("👋 Au revoir!")
             break
 
-        if algo not in ['kmeans', 'pca', 'autoencoder']:
+        if algo not in ['kmeans', 'pca', 'autoencoder', 'gan']:
             print("❌ Invalid algorithm choice. Please choose from kmeans, pca, autoencoder or quit.")
             continue
+
+        if algo == 'gan':
+            print("🟢 You chose GAN for generative modeling.")
+
+            # Initialisation du GAN
+            latent_space_size = int(input("Enter the latent space size (default 10): ") or 10)
+            image_size = int(input("Enter the image size (default 784): ") or 784)
+            model = Gan(latent_space_size=latent_space_size, image_size=image_size)
+            
+            model.train(X, batch_size=64, n_epochs=1000)
+
 
         if algo == 'kmeans':
             print("🔴 You chose KMeans clustering.")
