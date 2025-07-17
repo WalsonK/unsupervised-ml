@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import fetch_openml
 import os
 import pandas as pd
-from unsupervised_ml.kmeans_cuda import KMeansCUDA
+from kmeans_cuda import KMeansCUDA
 
 def run_mnist_clustering():
     """
@@ -24,17 +24,17 @@ def run_mnist_clustering():
     X = X / 255.0
     
     # 3. Run KMeans clustering with CUDA implementation
-    kmeans = KMeansCUDA(n_clusters=300, max_iter=300, tol=1e-4, device='cuda')
+    kmeans = KMeansCUDA(n_clusters=50, max_iter=300, tol=1e-4, device='cuda')
     kmeans.fit(X)
     labels = kmeans.predict(X)
     
     # Get centroids for plotting (convert from torch tensor to numpy)
     cluster_centers = kmeans.centroids.cpu().numpy()
     
-    # 4. Plot and save all 300 cluster centroids as images
+    # 4. Plot and save all 50 cluster centroids as images
     plt.figure(figsize=(12, 10))
-    for i in range(300):
-        plt.subplot(60, 5, i + 1)
+    for i in range(50):
+        plt.subplot(10, 5, i + 1)
         plt.imshow(cluster_centers[i].reshape(28, 28), cmap='gray')
         plt.title(f'Cluster {i}')
         plt.axis('off')
@@ -44,7 +44,7 @@ def run_mnist_clustering():
     plt.close()
     
     # 5. Create stacked bar chart: distribution of true labels in each cluster
-    num_clusters = 300
+    num_clusters = 50
     num_classes = 10
     
     # Build a contingency table: cluster x true class
@@ -79,7 +79,7 @@ def run_mnist_clustering():
     plt.savefig(os.path.join(image_dir, "cluster_class_distribution.png"))
     plt.close()
     
-    # 6. Save example digits per cluster (updated for 300 clusters)
+    # 6. Save example digits per cluster (updated for 50 clusters)
     def plot_cluster_examples(X, labels, cluster_id, num_examples=10):
         idxs = np.where(labels == cluster_id)[0][:num_examples]
         if len(idxs) == 0:
@@ -95,7 +95,7 @@ def run_mnist_clustering():
         plt.savefig(os.path.join(image_dir, f"cluster_{cluster_id}.png"))
         plt.close()
     
-    for i in range(300):
+    for i in range(50):
         plot_cluster_examples(X, labels, cluster_id=i)
 
 # Allow running directly
