@@ -44,7 +44,7 @@ def resample_stroke(stroke, num_points=100):
     
     return np.stack([new_x, new_y], axis=1)
 
-def load_quickdraw_data_as_resampled_strokes(path, num_points=100, max_samples_per_class=2000, max_classes=10):
+def load_quickdraw_data_as_resampled_strokes(path, num_points=100, max_samples_per_class=50000, max_classes=15):
     """
     Loads raw stroke data and preprocesses it into fixed-length resampled paths.
     """
