@@ -14,61 +14,70 @@ import os
 
 class SOMCuda:
     """
-    A from-scratch implementation of a Self-Organizing Map (Kohonen Map)
-    optimized to run on a CUDA-enabled GPU using PyTorch.
+    Carte Auto-Organisatrice (SOM) optimisée pour GPU avec PyTorch
     """
-    def __init__(self, grid_size=(20, 20), input_dim=784, learning_rate=0.5, 
+    def __init__(self, grid_size=(20, 20), input_dim=784, learning_rate=0.5,
                  sigma=None, decay_function='exponential', device='cuda'):
-        self.grid_height, self.grid_width = grid_size
-        self.input_dim = input_dim
-        self.initial_learning_rate = learning_rate
-        self.learning_rate = learning_rate
         
-        if sigma is None:
+        self.grid_height, self.grid_width = grid_size # Dimensions de la grille
+        self.input_dim = input_dim # Dimension des vecteurs d'entrée
+        self.initial_learning_rate = learning_rate # Taux d'apprentissage initial
+        self.learning_rate = learning_rate # Taux d'apprentissage courant
+
+        # Rayon de voisinage initial
+        if sigma is None: 
             self.initial_sigma = max(self.grid_height, self.grid_width) / 2.0
-        else:
+        else: 
             self.initial_sigma = float(sigma)
-        self.sigma = self.initial_sigma
-        
-        self.decay_function = decay_function
-        
+        self.sigma = self.initial_sigma # Rayon courant
+
+        self.decay_function = decay_function # Type de décroissance
+
+        # Vérif GPU/CPU
         if device == 'cuda' and not torch.cuda.is_available():
             print("WARNING: CUDA not available, falling back to CPU. This will be slow.")
             device = 'cpu'
         self.device = torch.device(device)
         print(f"Using device: {self.device}")
-        
-        self.weights = torch.rand(
-            self.grid_height, self.grid_width, self.input_dim,
-            device=self.device, dtype=torch.float32
-        )
+
+        # Poids aléatoires pour chaque neurone de la grille
+        self.weights = torch.rand(self.grid_height, self.grid_width, self.input_dim, 
+                                device=self.device, dtype=torch.float32)
         
         self._create_coordinate_grid()
-        
+
     def _create_coordinate_grid(self):
+        # Grille des coordonnées (y,x) de chaque neurone
         y_coords, x_coords = torch.meshgrid(
-            torch.arange(self.grid_height, device=self.device),
-            torch.arange(self.grid_width, device=self.device),
+            torch.arange(self.grid_height, device=self.device), 
+            torch.arange(self.grid_width, device=self.device), 
             indexing='ij'
         )
+        # Stack pour avoir (grid_h, grid_w, 2) avec [y, x] pour chaque position
         self.neuron_coords = torch.stack([y_coords, x_coords], dim=-1).float()
-        
+
     def _find_bmu(self, input_vector):
+        # Distance euclidienne² entre input et tous les poids
         distances_sq = torch.sum((self.weights - input_vector) ** 2, dim=2)
+        # Index du neurone le plus proche
         bmu_idx = torch.argmin(distances_sq)
-        bmu_y = bmu_idx // self.grid_width
-        bmu_x = bmu_idx % self.grid_width
-        return bmu_y, bmu_x
-    
+        # Conversion index linéaire -> coordonnées (y,x)
+        return bmu_idx // self.grid_width, bmu_idx % self.grid_width
+
     def _update_weights(self, input_vector, bmu_y, bmu_x):
         bmu_coord = torch.tensor([bmu_y, bmu_x], device=self.device, dtype=torch.float32)
+        # Distance² sur la grille entre chaque neurone et le BMU
         distances_sq_to_bmu = torch.sum((self.neuron_coords - bmu_coord) ** 2, dim=2)
+        
+        # Fonction gaussienne pour l'influence de voisinage
         neighborhood_influence = torch.exp(-distances_sq_to_bmu / (2 * self.sigma ** 2))
-        influence = neighborhood_influence.unsqueeze(2)
-        weight_update = influence * self.learning_rate * (input_vector - self.weights)
-        self.weights += weight_update
-    
+        influence = neighborhood_influence.unsqueeze(2) # Ajoute dim pour broadcasting
+        
+        # Mise à jour: poids += influence * lr * (input - poids)
+        self.weights += influence * self.learning_rate * (input_vector - self.weights)
+
     def _decay_parameters(self, iteration, total_iterations):
+        # Décroissance du learning rate et sigma au fil du temps
         if self.decay_function == 'exponential':
             time_constant = total_iterations / math.log(self.initial_sigma)
             self.learning_rate = self.initial_learning_rate * math.exp(-iteration / total_iterations)
@@ -77,32 +86,27 @@ class SOMCuda:
             fraction_done = iteration / total_iterations
             self.learning_rate = self.initial_learning_rate * (1 - fraction_done)
             self.sigma = self.initial_sigma * (1 - fraction_done)
-    
+
     def train(self, data, num_iterations):
-        if isinstance(data, np.ndarray):
+        # Conversion numpy -> tensor si nécessaire
+        if isinstance(data, np.ndarray): 
             data = torch.from_numpy(data).float()
         data = data.to(self.device)
+        
         n_samples = data.shape[0]
         
+        # Boucle d'entraînement
         for iteration in tqdm(range(num_iterations), desc=f"Training ({num_iterations} iters)"):
-            sample_idx = torch.randint(0, n_samples, (1,)).item()
-            input_vector = data[sample_idx]
+            # Échantillon aléatoire
+            input_vector = data[torch.randint(0, n_samples, (1,)).item()]
+            # Décroissance des paramètres
             self._decay_parameters(iteration, num_iterations)
+            # Trouve BMU et met à jour
             bmu_y, bmu_x = self._find_bmu(input_vector)
             self._update_weights(input_vector, bmu_y, bmu_x)
-    
-    def get_bmu_coordinates(self, data):
-        if isinstance(data, np.ndarray):
-            data = torch.from_numpy(data).float()
-        data = data.to(self.device)
-        bmu_coords = []
-        for sample in data:
-            bmu_y, bmu_x = self._find_bmu(sample)
-            bmu_coords.append([bmu_y.cpu().item(), bmu_x.cpu().item()])
-        return np.array(bmu_coords)
 
     def get_weights(self):
-        """Returns the weights as a NumPy array on the CPU."""
+        # Retourne les poids sur CPU en numpy
         return self.weights.cpu().numpy()
 
 # ==============================================================================
