@@ -26,7 +26,7 @@ os.makedirs(output_dir, exist_ok=True)
 print(f"Using device: {DEVICE}")
 print(f"Outputs will be saved to: {output_dir}")
 
-# --- Global Diffusion Variables (No Utilities Class) ---
+# --- Global Diffusion Variables ---
 betas = torch.linspace(0.0001, 0.02, TIMESTEPS, device=DEVICE)
 alphas = 1.0 - betas
 alphas_cumprod = torch.cumprod(alphas, axis=0)
@@ -35,7 +35,7 @@ sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - alphas_cumprod)
 posterior_variance = betas * (1.0 - torch.cat([torch.tensor([1.0], device=DEVICE), alphas_cumprod[:-1]])) / (1.0 - alphas_cumprod)
 
 # ==============================================================================
-# 1. The Model (Ultra-Simple MLP)
+# 1. The Model 
 # ==============================================================================
 class UltraSimpleMLP(nn.Module):
     def __init__(self):
